@@ -1,17 +1,10 @@
 #!/bin/bash
 
-# ======================================================
-# KBK Marzban VPN Panel - One-Line Setup Script
-# Based on YNL Script | Modified for KBK
-# Features: No SSL Warning, Telegram Bot, Auto Admin
-# Template URL Only Changed
-# ======================================================
-
 # Clear screen
 clear
 
 # Show KBK Banner
-echo "============================================================"
+echo "------------------------------------------------------------"
 echo -e "\e[1;36m"
 echo "  ██╗  ██╗██████╗ ██╗  ██╗"
 echo "  ██║ ██╔╝██╔══██╗██║ ██╔╝"
@@ -20,54 +13,34 @@ echo "  ██╔═██╗ ██╔══██╗██╔═██╗ "
 echo "  ██║  ██╗██████╔╝██║  ██╗"
 echo "  ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝"
 echo -e "\e[0m"
-echo "        KBK Marzban One-Line Setup"
-echo "============================================================"
+echo "           KBK Marzban One Line Setup"
+echo "------------------------------------------------------------"
 
-# --- Check Root ---
-if [[ $EUID -ne 0 ]]; then
-   echo -e "\e[31m❌ Root နဲ့ Run ပါ။\e[0m"
-   echo "sudo bash kbk_marzban.sh"
-   exit 1
-fi
-
-# --- Install Necessary Packages ---
-echo ""
+# Necessary Package Check
 echo "📦 Checking necessary packages..."
-apt update && apt install -y curl socat wget sed jq
+sudo apt update && sudo apt install -y curl socat wget sed
 
-# --- Inputs ---
-echo ""
-read -p "🌐 Enter Domain Name (e.g., kbko.kdns.fr): " DOMAIN
-read -p "📧 Enter Email for SSL: " EMAIL
-read -p "🤖 Enter Telegram Bot Token: " BOT_TOKEN
-read -p "👤 Enter Telegram Admin ID: " ADMIN_ID
-read -p "📝 Enter Subscription Title: " SUB_TITLE
-read -p "👨‍💼 Create Admin Username: " ADMIN_USER
-read -s -p "🔑 Create Admin Password: " ADMIN_PASS
-echo ""
-echo "============================================================"
+# Inputs
+read -p "Enter Domain Name (e.g., mar.example.com): " DOMAIN
+read -p "Enter Email for SSL: " EMAIL
+read -p "Enter Telegram Bot Token: " BOT_TOKEN
+read -p "Enter Telegram Admin ID: " ADMIN_ID
+read -p "Enter Subscription Title: " SUB_TITLE
+read -p "Create Admin Username: " ADMIN_USER
+read -s -p "Create Admin Password: " ADMIN_PASS
+echo -e "\n--------------------------------------------------"
 
-# --- Install Marzban ---
-echo ""
 echo "🚀 Installing Marzban..."
 sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
 
-# --- Wait for Marzban to initialize ---
-sleep 5
-
-# --- Generate SSL Certificates using ESSL (No Certbot Issues) ---
-echo ""
 echo "🔐 Generating SSL Certificates..."
 sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh)" @ --install
 sudo essl "$EMAIL" "$DOMAIN" marzban
 
-# --- Set Up Custom Template (KBK Style) - ONLY THIS IS CHANGED ---
-echo ""
-echo "🎨 Setting up KBK Custom Template..."
+echo "🎨 Setting up Custom Template..."
 sudo mkdir -p /var/lib/marzban/templates/subscription/
 sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/kbko414/marzban-m/main/index.html
 
-# --- Update .env Configuration (No SSL Warning) ---
 ENV_FILE="/opt/marzban/.env"
 
 update_env() {
@@ -80,8 +53,7 @@ update_env() {
     fi
 }
 
-echo ""
-echo "📝 Updating .env configuration (SSL Enabled)..."
+echo "📝 Updating .env configuration..."
 update_env "UVICORN_HOST" "0.0.0.0"
 update_env "UVICORN_PORT" "8000"
 update_env "UVICORN_SSL_CERTFILE" "/var/lib/marzban/certs/$DOMAIN/fullchain.pem"
@@ -96,32 +68,17 @@ update_env "SUBSCRIPTION_PAGE_TEMPLATE" "subscription/index.html"
 # Remove any old typo entries
 sudo sed -i "/^UNICORN_SSL_/d" "$ENV_FILE"
 
-# --- Restart Marzban ---
-echo ""
 echo "🔄 Restarting Marzban to apply changes..."
 marzban restart
 
-# --- Wait for Marzban to wake up ---
-sleep 10
+# Wait for Marzban to wake up before creating admin
+sleep 5
 
-# --- Create Admin User ---
-echo ""
 echo "👤 Creating Admin User..."
-marzban cli admin create --username "$ADMIN_USER" --password "$ADMIN_PASS" --sudo || echo "⚠️ Admin setup skipped."
+marzban cli admin create --username "$ADMIN_USER" --password "$ADMIN_PASS" --sudo || echo "Admin setup skipped."
 
-# --- Final Output ---
-clear
-echo "============================================================"
-echo -e "\e[1;32m✅ KBK Marzban Setup အောင်မြင်စွာ ပြီးဆုံးပါပြီ!\e[0m"
-echo "============================================================"
-echo ""
+echo "--------------------------------------------------"
+echo -e "\e[1;32m✅ KBK Setup အောင်မြင်စွာ ပြီးဆုံးပါပြီ!\e[0m"
 echo "🌐 Dashboard: https://$DOMAIN:8000/dashboard"
 echo "👤 Username: $ADMIN_USER"
-echo "🔑 Password: [You set it]"
-echo ""
-echo "📌 Telegram Bot: @$(curl -s https://api.telegram.org/bot$BOT_TOKEN/getMe | jq -r .result.username)"
-echo ""
-echo "📁 Marzban Folder: /opt/marzban/"
-echo ""
-echo "💡 Logs: cd /opt/marzban && docker-compose logs -f"
-echo "============================================================"
+echo "--------------------------------------------------"
