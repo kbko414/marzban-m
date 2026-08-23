@@ -4,6 +4,7 @@
 # KBK Marzban VPN Panel - One-Line Setup Script
 # Based on YNL Script | Modified for KBK
 # Features: No SSL Warning, Telegram Bot, Auto Admin
+# Template URL Only Changed
 # ======================================================
 
 # Clear screen
@@ -60,11 +61,11 @@ echo "🔐 Generating SSL Certificates..."
 sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh)" @ --install
 sudo essl "$EMAIL" "$DOMAIN" marzban
 
-# --- Set Up Custom Template (KBK Style) ---
+# --- Set Up Custom Template (KBK Style) - ONLY THIS IS CHANGED ---
 echo ""
 echo "🎨 Setting up KBK Custom Template..."
 sudo mkdir -p /var/lib/marzban/templates/subscription/
-sudo wget -N -P /var/lib/marzban/templates/subscription/ https://github.com/kbko414/marzban-m/blob/c1fd29520750a238bbffbc0e6e5aa4a952a62f4d/index.html
+sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/kbko414/marzban-m/main/index.html
 
 # --- Update .env Configuration (No SSL Warning) ---
 ENV_FILE="/opt/marzban/.env"
@@ -120,7 +121,6 @@ echo "🔑 Password: [You set it]"
 echo ""
 echo "📌 Telegram Bot: @$(curl -s https://api.telegram.org/bot$BOT_TOKEN/getMe | jq -r .result.username)"
 echo ""
-echo "📁 Nginx Config: /etc/nginx/sites-available/marzban (if needed)"
 echo "📁 Marzban Folder: /opt/marzban/"
 echo ""
 echo "💡 Logs: cd /opt/marzban && docker-compose logs -f"
