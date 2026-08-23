@@ -64,7 +64,7 @@ sudo essl "$EMAIL" "$DOMAIN" marzban
 echo ""
 echo "🎨 Setting up KBK Custom Template..."
 sudo mkdir -p /var/lib/marzban/templates/subscription/
-sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/yannaing86tt/template/main/subscription/index.html
+sudo wget -N -P /var/lib/marzban/templates/subscription/ https://github.com/kbko414/marzban-m/blob/c1fd29520750a238bbffbc0e6e5aa4a952a62f4d/index.html
 
 # --- Update .env Configuration (No SSL Warning) ---
 ENV_FILE="/opt/marzban/.env"
