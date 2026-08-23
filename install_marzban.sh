@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ======================================================
-# KBK Marzban VPN Panel - Error-Proof Installer
-# Features: No SSL Warning, Auto Admin, Custom Template
-# Fixed: .env parsing, SSL generation, Port conflicts
+# KBK Marzban VPN Panel - Full Installer
+# Based on YNL Script | Modified for KBK
+# Features: No SSL Warning, Telegram Bot, Auto Admin
+# User-Friendly with Clear Instructions
 # ======================================================
 
 # Clear screen
@@ -19,31 +20,44 @@ echo "  ██╔═██╗ ██╔══██╗██╔═██╗ "
 echo "  ██║  ██╗██████╔╝██║  ██╗"
 echo "  ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝"
 echo -e "\e[0m"
-echo "        KBK Marzban One-Line Setup"
+echo "           KBK Marzban One Line Setup"
 echo "============================================================"
 
 # --- Check Root ---
 if [[ $EUID -ne 0 ]]; then
    echo -e "\e[31m❌ Root နဲ့ Run ပါ။\e[0m"
-   echo "sudo bash kbk_marzban.sh"
+   echo "sudo bash install_marzban.sh"
    exit 1
 fi
 
-# --- Install Necessary Packages ---
+# --- Show Instructions ---
 echo ""
+echo "📌 အောက်ပါအချက်တွေကို ပြင်ဆင်ထားပါ:"
+echo "  1. Domain (Server IP ကို ညွှန်ပြထားတဲ့)"
+echo "  2. Email (SSL အတွက်)"
+echo "  3. Telegram Bot Token (@BotFather ကနေ ရယူပါ)"
+echo "  4. Telegram Admin ID (@userinfobot ကနေ ရယူပါ)"
+echo "  5. Subscription Title"
+echo "  6. Admin Username & Password"
+echo "============================================================"
+echo ""
+
+# --- Install Necessary Packages ---
 echo "📦 Checking necessary packages..."
 apt update && apt install -y curl socat wget sed jq ufw
 
 # --- Inputs ---
 echo ""
-read -p "🌐 Enter Domain Name: " DOMAIN
+read -p "🌐 Enter Domain Name (e.g., vpn.example.com): " DOMAIN
 read -p "📧 Enter Email for SSL: " EMAIL
 read -p "🤖 Enter Telegram Bot Token: " BOT_TOKEN
 read -p "👤 Enter Telegram Admin ID: " ADMIN_ID
 read -p "📝 Enter Subscription Title: " SUB_TITLE
-read -p "👨‍💼 Admin Username: " ADMIN_USER
-read -s -p "🔑 Admin Password: " ADMIN_PASS
+read -p "👨💼 Enter Admin Username: " ADMIN_USER
+read -s -p "🔑 Enter Admin Password: " ADMIN_PASS
 echo ""
+echo "============================================================"
+echo "🚀 စတင်ပါပြီ..."
 echo "============================================================"
 
 # --- Install Marzban ---
@@ -71,7 +85,7 @@ if [[ ! -f "/var/lib/marzban/certs/$DOMAIN/fullchain.pem" ]]; then
     exit 1
 fi
 
-# --- Set Up Custom Template ---
+# --- Set Up Custom Template (KBK) ---
 echo ""
 echo "🎨 Setting up KBK Custom Template..."
 sudo mkdir -p /var/lib/marzban/templates/subscription/
