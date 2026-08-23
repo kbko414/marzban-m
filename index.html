@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>KBK VPN Subscription</title>
+    <!-- Font Awesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ----- Reset & Base ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 10% 30%, #0b0e1a, #05070e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        /* ----- Glass Card Container ----- */
+        .glass-card {
+            max-width: 720px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 3rem;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            text-align: center;
+            color: #f0f3fa;
+        }
+
+        /* ----- Logo / Brand ----- */
+        .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .brand i {
+            font-size: 2.8rem;
+            background: linear-gradient(145deg, #00d4ff, #7a5cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(145deg, #ffffff, #b0c4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand .badge {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            border-radius: 100px;
+            padding: 0.2rem 1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #8ab4ff;
+            text-transform: uppercase;
+            -webkit-text-fill-color: #8ab4ff;
+        }
+
+        /* ----- Status / Online Badge ----- */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 100px;
+            padding: 0.4rem 1.2rem;
+            margin: 1rem 0 1.8rem 0;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #9effc0;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00e676;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #00e67688;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { opacity: 0.6; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        /* ----- Subscription Details ----- */
+        .sub-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0.5rem 0 0.2rem 0;
+            letter-spacing: -0.3px;
+        }
+
+        .sub-desc {
+            color: #8899cc;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        /* ----- Info Grid (Glass) ----- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+            padding: 1.2rem 0.8rem;
+            backdrop-filter: blur(8px);
+            transition: 0.2s ease;
+        }
+
+        .info-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .info-item i {
+            font-size: 1.6rem;
+            color: #7a5cff;
+            margin-bottom: 0.4rem;
+            display: inline-block;
+        }
+
+        .info-item .label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7a8bb5;
+        }
+
+        .info-item .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 0.15rem;
+            word-break: break-all;
+            color: #eef5ff;
+        }
+
+        .info-item .value.small {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* ----- Subscription Link (Card) ----- */
+        .link-card {
+            background: rgba(0, 20, 40, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 2rem;
+            padding: 1.2rem 1.5rem;
+            margin: 1.8rem 0 2rem 0;
+            text-align: left;
+            transition: 0.2s ease;
+        }
+
+        .link-card:hover {
+            border-color: rgba(100, 140, 255, 0.25);
+            background: rgba(0, 20, 40, 0.6);
+        }
+
+        .link-label {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #8a9fd8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.5rem;
+        }
+
+        .link-label i {
+            color: #00d4ff;
+        }
+
+        .link-value {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .link-value code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: #b8caff;
+            word-break: break-all;
+            flex: 1;
+            min-width: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-copy {
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            color: #a0c4ff;
+            padding: 0.4rem 1.2rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .btn-copy:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #ffffff;
+        }
+
+        /* ----- Footer / Extra ----- */
+        .footer-note {
+            font-size: 0.75rem;
+            color: #4a5a7a;
+            margin-top: 1.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 1.8rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-note a {
+            color: #6a8bb8;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .footer-note a:hover {
+            color: #aac4ff;
+        }
+
+        /* ----- Responsive ----- */
+        @media (max-width: 540px) {
+            .glass-card { padding: 1.8rem 1.2rem; border-radius: 2rem; }
+            .brand h1 { font-size: 1.7rem; }
+            .info-grid { grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+            .info-item { padding: 1rem 0.5rem; }
+            .link-value { flex-direction: column; align-items: stretch; }
+            .btn-copy { justify-content: center; }
+            .sub-title { font-size: 1.4rem; }
+        }
+
+        @media (max-width: 400px) {
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="glass-card">
+
+    <!-- Brand -->
+    <div class="brand">
+        <i class="fas fa-shield-halved"></i>
+        <h1>KBK VPN</h1>
+        <span class="badge">secure</span>
+    </div>
+
+    <!-- Status -->
+    <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>All systems operational</span>
+    </div>
+
+    <!-- Subscription Title -->
+    <div class="sub-title" id="subTitle">KBK Premium</div>
+    <div class="sub-desc" id="subDesc">Unlimited • High Speed • Zero Logs</div>
+
+    <!-- Info Grid (dynamic via JS) -->
+    <div class="info-grid" id="infoGrid">
+        <div class="info-item">
+            <i class="fas fa-calendar-alt"></i>
+            <div class="label">Expires</div>
+            <div class="value" id="expiryDate">2026-12-31</div>
+        </div>
+        <div class="info-item">
+            <i class="fas fa-wifi"></i>
+            <div class="label">Data Used</div>
+            <div class="value" id="dataUsed">12.4 GB</div>
+        </div>
+        <div class="info-item">
+            <i class="fas fa-tachometer-alt"></i>
+            <div class="label">Speed</div>
+            <div class="value" id="speed">100 Mbps</div>
+        </div>
+        <div class="info-item">
+            <i class="fas fa-users"></i>
+            <div class="label">Devices</div>
+            <div class="value" id="devices">Unlimited</div>
+        </div>
+    </div>
+
+    <!-- Subscription Link -->
+    <div class="link-card">
+        <div class="link-label">
+            <i class="fas fa-link"></i>
+            <span>Subscription URL</span>
+        </div>
+        <div class="link-value">
+            <code id="subLink">https://kbko.kdns.fr:8000/sub/...</code>
+            <button class="btn-copy" id="copyBtn">
+                <i class="fas fa-copy"></i> Copy
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-note">
+        <span><i class="fas fa-lock"></i> Encrypted</span>
+        <span><i class="fas fa-globe"></i> Global</span>
+        <a href="#" id="renewLink"><i class="fas fa-sync-alt"></i> Renew</a>
+        <a href="#" id="supportLink"><i class="fas fa-headset"></i> Support</a>
+    </div>
+
+</div>
+
+<script>
+    // --- DOM Elements ---
+    const subLinkEl = document.getElementById('subLink');
+    const copyBtn = document.getElementById('copyBtn');
+    const expiryEl = document.getElementById('expiryDate');
+    const dataUsedEl = document.getElementById('dataUsed');
+    const speedEl = document.getElementById('speed');
+    const devicesEl = document.getElementById('devices');
+    const subTitleEl = document.getElementById('subTitle');
+    const subDescEl = document.getElementById('subDesc');
+
+    // --- Simulate dynamic data (replace with real API later) ---
+    function loadSubscriptionData() {
+        // In a real scenario, fetch from /sub/info or use template variables
+        // For demo, we keep placeholder values but they are editable
+
+        // Example: you can override these with data-* attributes or window variables
+        const data = {
+            title: 'KBK Premium',
+            desc: 'Unlimited • High Speed • Zero Logs',
+            expiry: '2026-12-31',
+            used: '12.4 GB',
+            speed: '100 Mbps',
+            devices: 'Unlimited',
+            link: 'https://kbko.kdns.fr:8000/sub/your-uuid-here'
+        };
+
+        // Optionally read from URL params or meta tags
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('title')) data.title = params.get('title');
+        if (params.get('expiry')) data.expiry = params.get('expiry');
+        if (params.get('link')) data.link = params.get('link');
+
+        // Apply to DOM
+        subTitleEl.textContent = data.title;
+        subDescEl.textContent = data.desc;
+        expiryEl.textContent = data.expiry;
+        dataUsedEl.textContent = data.used;
+        speedEl.textContent = data.speed;
+        devicesEl.textContent = data.devices;
+        subLinkEl.textContent = data.link;
+    }
+
+    // --- Copy to Clipboard ---
+    copyBtn.addEventListener('click', function() {
+        const text = subLinkEl.textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                }, 2000);
+            }).catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    });
+
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => {
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            }, 2000);
+        } catch (e) {
+            alert('Copy failed. Please copy manually.');
+        }
+        document.body.removeChild(textarea);
+    }
+
+    // --- Renew / Support links (demo) ---
+    document.getElementById('renewLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('Renewal feature coming soon.');
+    });
+
+    document.getElementById('supportLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('Contact support: @KBKSupportBot');
+    });
+
+    // --- Initialize ---
+    loadSubscriptionData();
+</script>
+
+</body>
+</html>
