@@ -1,262 +1,78 @@
 #!/bin/bash
-# ===========================================================
-# Marzban Panel Interactive Auto-Install Script
-# Asks for domain, email, and admin credentials before install
-# Supports: Ubuntu 20.04 / 22.04 / 24.04
-# ===========================================================
 
-set -e  # Exit on error
-
-# ============ COLORS ============
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# ============ FUNCTIONS ============
-log() {
-    echo -e "${BLUE}[+]${NC} $1"
-}
-
-success() {
-    echo -e "${GREEN}[✔]${NC} $1"
-}
-
-warn() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-error() {
-    echo -e "${RED}[✘]${NC} $1"
-    exit 1
-}
-
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        error "This script must be run as root. Use: sudo bash $0"
-    fi
-}
-
-# ============ INTERACTIVE INPUT ============
+# Clear screen
 clear
-echo "============================================================"
-echo "       Marzban Panel Interactive Installer"
-echo "============================================================"
-echo ""
 
-# Check root first
-check_root
+# Show Banner
+echo "------------------------------------------------------------"
+echo "           Marzban One Line Setup"
+echo "------------------------------------------------------------"
 
-# Ask for Domain
-while true; do
-    read -p "🌐 Enter your domain (e.g., panel.yourdomain.com): " DOMAIN
-    if [[ -n "$DOMAIN" ]]; then
-        break
+# Necessary Package Check
+echo "📦 Checking necessary packages..."
+sudo apt update && sudo apt install -y curl socat wget sed
+
+# Inputs
+read -p "Enter Domain Name (e.g., mar.example.com): " DOMAIN
+read -p "Enter Email for SSL: " EMAIL
+read -p "Enter Telegram Bot Token: " BOT_TOKEN
+read -p "Enter Telegram Admin ID: " ADMIN_ID
+read -p "Enter Subscription Title: " SUB_TITLE
+read -p "Create Admin Username: " ADMIN_USER
+read -s -p "Create Admin Password: " ADMIN_PASS
+echo -e "\n--------------------------------------------------"
+
+echo "🚀 Installing Marzban..."
+# Marzban installation (using timeout as per your original script)
+sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
+
+echo "🔐 Generating SSL Certificates..."
+sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh)" @ --install
+# SSL issue can take time, added sudo
+sudo essl "$EMAIL" "$DOMAIN" marzban
+
+echo "🎨 Setting up Custom Template..."
+sudo mkdir -p /var/lib/marzban/templates/subscription/
+sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/kbko414/marzban-m/refs/heads/main/index.html
+
+ENV_FILE="/opt/marzban/.env"
+
+update_env() {
+    local key=$1
+    local value=$2
+    if sudo grep -iqE "^#?\s*$key\s*=" "$ENV_FILE"; then
+        sudo sed -i "s|^#*\s*$key\s*=.*|$key = \"$value\"|gI" "$ENV_FILE"
     else
-        warn "Domain cannot be empty. Please try again."
+        echo "$key = \"$value\"" | sudo tee -a "$ENV_FILE" > /dev/null
     fi
-done
+}
 
-# Ask for Email
-while true; do
-    read -p "📧 Enter your email for SSL (e.g., admin@yourdomain.com): " ADMIN_EMAIL
-    if [[ -n "$ADMIN_EMAIL" ]]; then
-        break
-    else
-        warn "Email cannot be empty. Please try again."
-    fi
-done
+echo "📝 Updating .env configuration..."
+update_env "UVICORN_HOST" "0.0.0.0"
+update_env "UVICORN_PORT" "8000"
+update_env "UVICORN_SSL_CERTFILE" "/var/lib/marzban/certs/$DOMAIN/fullchain.pem"
+update_env "UVICORN_SSL_KEYFILE" "/var/lib/marzban/certs/$DOMAIN/privkey.pem"
+update_env "TELEGRAM_API_TOKEN" "$BOT_TOKEN"
+update_env "TELEGRAM_ADMIN_ID" "$ADMIN_ID"
+update_env "SUB_PROFILE_TITLE" "$SUB_TITLE"
+update_env "XRAY_SUBSCRIPTION_URL_PREFIX" "https://$DOMAIN:8000"
+update_env "CUSTOM_TEMPLATES_DIRECTORY" "/var/lib/marzban/templates/"
+update_env "SUBSCRIPTION_PAGE_TEMPLATE" "subscription/index.html"
 
-# Ask for Admin Username
-read -p "👤 Enter admin username (default: admin): " ADMIN_USER
-ADMIN_USER=${ADMIN_USER:-admin}
+# Remove any old typo entries
+sudo sed -i "/^UNICORN_SSL_/d" "$ENV_FILE"
 
-# Ask for Admin Password (hidden input)
-while true; do
-    read -s -p "🔑 Enter admin password (default: admin): " ADMIN_PASS
-    echo
-    if [[ -z "$ADMIN_PASS" ]]; then
-        ADMIN_PASS="admin"
-        warn "Using default password: admin"
-        break
-    fi
-    # Confirm password
-    read -s -p "🔑 Confirm admin password: " ADMIN_PASS_CONFIRM
-    echo
-    if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
-        break
-    else
-        warn "Passwords do not match. Please try again."
-    fi
-done
+echo "🔄 Restarting Marzban to apply changes..."
+marzban restart
 
-echo ""
-echo "============================================================"
-log "Configuration Summary:"
-echo "  Domain        : $DOMAIN"
-echo "  Email         : $ADMIN_EMAIL"
-echo "  Admin User    : $ADMIN_USER"
-echo "  Admin Pass    : ********"
-echo "============================================================"
-read -p "Proceed with installation? (y/n): " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    error "Installation cancelled by user."
-fi
-
-# ============ MAIN INSTALLATION ============
-clear
-log "Starting installation..."
-
-# 1. Update System
-log "Updating system packages..."
-apt update -y && apt upgrade -y
-
-# 2. Install Dependencies
-log "Installing dependencies..."
-apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx sqlite3 curl wget git ufw
-
-# 3. Set Timezone
-log "Setting timezone to UTC..."
-timedatectl set-timezone UTC
-
-# 4. Remove old Marzban installation (if any)
-log "Removing old Marzban installation (if exists)..."
-systemctl stop marzban 2>/dev/null || true
-systemctl disable marzban 2>/dev/null || true
-rm -rf /opt/marzban /var/lib/marzban /usr/local/bin/marzban
-rm -f /etc/systemd/system/marzban.service
-rm -f /etc/nginx/sites-available/marzban /etc/nginx/sites-enabled/marzban
-systemctl daemon-reload
-
-# 5. Install Marzban
-log "Installing Marzban..."
-bash <(curl -s https://raw.githubusercontent.com/Gozargah/Marzban/master/install.sh) <<< "y"
-
-# 6. Configure .env
-log "Configuring .env..."
-cat > /opt/marzban/.env <<EOF
-UVICORN_HOST=0.0.0.0
-UVICORN_PORT=8000
-ALLOWED_HOSTS=$DOMAIN,localhost,127.0.0.1
-DEBUG=False
-DB_URL=sqlite:////var/lib/marzban/db.sqlite3
-SSL_CERT_FILE=/var/lib/marzban/certs/$DOMAIN/fullchain.pem
-SSL_KEY_FILE=/var/lib/marzban/certs/$DOMAIN/privkey.pem
-EOF
-
-# 7. Create SSL Certificate Directory
-mkdir -p /var/lib/marzban/certs/$DOMAIN
-
-# 8. Start Marzban (first run to create DB)
-log "Starting Marzban for the first time..."
-systemctl daemon-reload
-systemctl start marzban
-systemctl enable marzban
+# Wait for Marzban to wake up before creating admin
 sleep 5
 
-# 9. Create Admin User (force create)
-log "Creating admin user: $ADMIN_USER..."
-/usr/local/bin/marzban admin create -u "$ADMIN_USER" -p "$ADMIN_PASS" --sudo || {
-    warn "Admin user creation failed (might already exist). Trying to set password..."
-    /usr/local/bin/marzban admin set-password -u "$ADMIN_USER" -p "$ADMIN_PASS" || true
-}
+echo "👤 Creating Admin User..."
+marzban cli admin create --username "$ADMIN_USER" --password "$ADMIN_PASS" --sudo || echo "Admin setup skipped."
 
-# 10. Configure Nginx
-log "Configuring Nginx..."
-cat > /etc/nginx/sites-available/marzban <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name $DOMAIN;
-
-    ssl_certificate /var/lib/marzban/certs/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /var/lib/marzban/certs/$DOMAIN/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_buffering off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-EOF
-
-ln -sf /etc/nginx/sites-available/marzban /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-# 11. Obtain SSL Certificate (Certbot)
-log "Obtaining SSL certificate for $DOMAIN..."
-certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect --force-renewal
-
-# 12. Set Permissions
-log "Setting permissions..."
-chown -R www-data:www-data /var/lib/marzban/
-chmod 644 /var/lib/marzban/db.sqlite3 2>/dev/null || true
-chown -R www-data:www-data /var/lib/marzban/certs/
-
-# 13. Restart Services
-log "Restarting services..."
-systemctl restart marzban
-systemctl restart nginx
-
-# 14. Firewall
-log "Configuring firewall..."
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-echo "y" | ufw enable || true
-
-# 15. Final Check
-sleep 3
-echo ""
-
-# ============ VERIFICATION ============
-success "Installation completed!"
-echo ""
-echo "============================================================"
-echo "📌  Marzban Panel is ready!"
-echo ""
-echo "🔗  Access: https://$DOMAIN/dashboard"
-echo ""
-echo "🔐  Admin Credentials:"
-echo "    Username: $ADMIN_USER"
-echo "    Password: ******** (the one you set)"
-echo ""
-echo "⚠️  If you forgot the password, reset it with:"
-echo "    marzban admin set-password -u $ADMIN_USER -p NEW_PASS"
-echo "============================================================"
-echo ""
-
-# Check if service is running
-if systemctl is-active --quiet marzban; then
-    success "Marzban service is running."
-else
-    warn "Marzban service is not running. Check logs: journalctl -u marzban -f"
-fi
-
-if systemctl is-active --quiet nginx; then
-    success "Nginx service is running."
-else
-    warn "Nginx service is not running. Check logs: journalctl -u nginx -f"
-fi
-
-echo ""
-log "Service status:"
-systemctl status marzban --no-pager | grep Active
-systemctl status nginx --no-pager | grep Active
-echo ""
-log "Listen ports:"
-ss -tlnp | grep -E ":80|:443|:8000" || true
-echo ""
-log "All done! Happy hacking 😎"
+echo "--------------------------------------------------"
+echo -e "\e[1;32m✅ Setup အောင်မြင်စွာ ပြီးဆုံးပါပြီ!\e[0m"
+echo "🌐 Dashboard: https://$DOMAIN:8000/dashboard"
+echo "👤 Username: $ADMIN_USER"
+echo "--------------------------------------------------"
