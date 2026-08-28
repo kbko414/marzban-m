@@ -5,7 +5,8 @@ clear
 
 # Show Banner
 echo "------------------------------------------------------------"
-echo "           Marzban One Line Setup"
+echo -e "\e[0m"
+echo "           Marzban One Line Setup by KBKO"
 echo "------------------------------------------------------------"
 
 # Necessary Package Check
@@ -33,7 +34,7 @@ sudo essl "$EMAIL" "$DOMAIN" marzban
 
 echo "🎨 Setting up Custom Template..."
 sudo mkdir -p /var/lib/marzban/templates/subscription/
-sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/kbko414/marzban-m/refs/heads/main/index.html
+sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/yannaing86tt/template/main/subscription/index.html
 
 ENV_FILE="/opt/marzban/.env"
 
@@ -69,10 +70,10 @@ marzban restart
 sleep 5
 
 echo "👤 Creating Admin User..."
-marzban cli admin create --username "$ADMIN_USER" --password "$ADMIN_PASS" --sudo || echo "Admin setup skipped."
+marzban admin create -u "$ADMIN_USER" -p "$ADMIN_PASS" --sudo || echo "Admin setup skipped."
 
-echo "--------------------------------------------------"
-echo -e "\e[1;32m✅ Setup အောင်မြင်စွာ ပြီးဆုံးပါပြီ!\e[0m"
+echo "------------------------------------------------------------"
+echo -e "\e[1;32m✅ Setup completed successfully!\e[0m"
 echo "🌐 Dashboard: https://$DOMAIN:8000/dashboard"
 echo "👤 Username: $ADMIN_USER"
-echo "--------------------------------------------------"
+echo "------------------------------------------------------------"
