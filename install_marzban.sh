@@ -1,16 +1,11 @@
 #!/bin/bash
 # ===========================================================
-# Marzban Panel Auto-Install Script
-# One-shot, no-interaction, production-ready
+# Marzban Panel Interactive Auto-Install Script
+# Asks for domain, email, and admin credentials before install
 # Supports: Ubuntu 20.04 / 22.04 / 24.04
 # ===========================================================
 
 set -e  # Exit on error
-
-# ============ CONFIGURATION ============
-DOMAIN="marz.tkii.eu.cc"          # <-- Replace with your domain
-ADMIN_EMAIL="kxantbhko@gmail.com" # <-- Your email for SSL
-TIMEZONE="UTC"
 
 # ============ COLORS ============
 RED='\033[0;31m'
@@ -43,30 +38,89 @@ check_root() {
     fi
 }
 
-# ============ MAIN INSTALLATION ============
+# ============ INTERACTIVE INPUT ============
 clear
 echo "============================================================"
-echo "       Marzban Panel Auto-Install Script"
-echo "       Domain: $DOMAIN"
+echo "       Marzban Panel Interactive Installer"
 echo "============================================================"
 echo ""
 
-# 1. Root Check
+# Check root first
 check_root
 
-# 2. Update System
+# Ask for Domain
+while true; do
+    read -p "🌐 Enter your domain (e.g., panel.yourdomain.com): " DOMAIN
+    if [[ -n "$DOMAIN" ]]; then
+        break
+    else
+        warn "Domain cannot be empty. Please try again."
+    fi
+done
+
+# Ask for Email
+while true; do
+    read -p "📧 Enter your email for SSL (e.g., admin@yourdomain.com): " ADMIN_EMAIL
+    if [[ -n "$ADMIN_EMAIL" ]]; then
+        break
+    else
+        warn "Email cannot be empty. Please try again."
+    fi
+done
+
+# Ask for Admin Username
+read -p "👤 Enter admin username (default: admin): " ADMIN_USER
+ADMIN_USER=${ADMIN_USER:-admin}
+
+# Ask for Admin Password (hidden input)
+while true; do
+    read -s -p "🔑 Enter admin password (default: admin): " ADMIN_PASS
+    echo
+    if [[ -z "$ADMIN_PASS" ]]; then
+        ADMIN_PASS="admin"
+        warn "Using default password: admin"
+        break
+    fi
+    # Confirm password
+    read -s -p "🔑 Confirm admin password: " ADMIN_PASS_CONFIRM
+    echo
+    if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
+        break
+    else
+        warn "Passwords do not match. Please try again."
+    fi
+done
+
+echo ""
+echo "============================================================"
+log "Configuration Summary:"
+echo "  Domain        : $DOMAIN"
+echo "  Email         : $ADMIN_EMAIL"
+echo "  Admin User    : $ADMIN_USER"
+echo "  Admin Pass    : ********"
+echo "============================================================"
+read -p "Proceed with installation? (y/n): " CONFIRM
+if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+    error "Installation cancelled by user."
+fi
+
+# ============ MAIN INSTALLATION ============
+clear
+log "Starting installation..."
+
+# 1. Update System
 log "Updating system packages..."
 apt update -y && apt upgrade -y
 
-# 3. Install Dependencies
+# 2. Install Dependencies
 log "Installing dependencies..."
 apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx sqlite3 curl wget git ufw
 
-# 4. Set Timezone
-log "Setting timezone to $TIMEZONE..."
-timedatectl set-timezone $TIMEZONE
+# 3. Set Timezone
+log "Setting timezone to UTC..."
+timedatectl set-timezone UTC
 
-# 5. Remove old Marzban installation (if any)
+# 4. Remove old Marzban installation (if any)
 log "Removing old Marzban installation (if exists)..."
 systemctl stop marzban 2>/dev/null || true
 systemctl disable marzban 2>/dev/null || true
@@ -75,34 +129,38 @@ rm -f /etc/systemd/system/marzban.service
 rm -f /etc/nginx/sites-available/marzban /etc/nginx/sites-enabled/marzban
 systemctl daemon-reload
 
-# 6. Install Marzban
+# 5. Install Marzban
 log "Installing Marzban..."
 bash <(curl -s https://raw.githubusercontent.com/Gozargah/Marzban/master/install.sh) <<< "y"
 
-# 7. Configure .env
+# 6. Configure .env
 log "Configuring .env..."
 cat > /opt/marzban/.env <<EOF
 UVICORN_HOST=0.0.0.0
 UVICORN_PORT=8000
 ALLOWED_HOSTS=$DOMAIN,localhost,127.0.0.1
 DEBUG=False
-# DATABASE
 DB_URL=sqlite:////var/lib/marzban/db.sqlite3
-# SSL
 SSL_CERT_FILE=/var/lib/marzban/certs/$DOMAIN/fullchain.pem
 SSL_KEY_FILE=/var/lib/marzban/certs/$DOMAIN/privkey.pem
 EOF
 
-# 8. Create SSL Certificate Directory
+# 7. Create SSL Certificate Directory
 mkdir -p /var/lib/marzban/certs/$DOMAIN
 
-# 9. Start Marzban (first run to create DB)
+# 8. Start Marzban (first run to create DB)
 log "Starting Marzban for the first time..."
 systemctl daemon-reload
 systemctl start marzban
 systemctl enable marzban
 sleep 5
-systemctl status marzban --no-pager || true
+
+# 9. Create Admin User (force create)
+log "Creating admin user: $ADMIN_USER..."
+/usr/local/bin/marzban admin create -u "$ADMIN_USER" -p "$ADMIN_PASS" --sudo || {
+    warn "Admin user creation failed (might already exist). Trying to set password..."
+    /usr/local/bin/marzban admin set-password -u "$ADMIN_USER" -p "$ADMIN_PASS" || true
+}
 
 # 10. Configure Nginx
 log "Configuring Nginx..."
@@ -139,7 +197,7 @@ rm -f /etc/nginx/sites-enabled/default
 
 # 11. Obtain SSL Certificate (Certbot)
 log "Obtaining SSL certificate for $DOMAIN..."
-certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email $ADMIN_EMAIL --redirect --force-renewal
+certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect --force-renewal
 
 # 12. Set Permissions
 log "Setting permissions..."
@@ -171,11 +229,12 @@ echo "📌  Marzban Panel is ready!"
 echo ""
 echo "🔗  Access: https://$DOMAIN/dashboard"
 echo ""
-echo "📁  Admin credentials (default):"
-echo "    Username: admin"
-echo "    Password: admin"
+echo "🔐  Admin Credentials:"
+echo "    Username: $ADMIN_USER"
+echo "    Password: ******** (the one you set)"
 echo ""
-echo "⚠️  Change the default password immediately!"
+echo "⚠️  If you forgot the password, reset it with:"
+echo "    marzban admin set-password -u $ADMIN_USER -p NEW_PASS"
 echo "============================================================"
 echo ""
 
@@ -192,7 +251,6 @@ else
     warn "Nginx service is not running. Check logs: journalctl -u nginx -f"
 fi
 
-# Print service status
 echo ""
 log "Service status:"
 systemctl status marzban --no-pager | grep Active
