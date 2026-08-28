@@ -1,148 +1,204 @@
 #!/bin/bash
+# ===========================================================
+# Marzban Panel Auto-Install Script
+# One-shot, no-interaction, production-ready
+# Supports: Ubuntu 20.04 / 22.04 / 24.04
+# ===========================================================
 
-# ======================================================
-# KBK Marzban VPN Panel - Full Installer
-# Based on YNL Script | Modified for KBK
-# Features: No SSL Warning, Telegram Bot, Auto Admin
-# User-Friendly with Clear Instructions
-# ======================================================
+set -e  # Exit on error
 
-# Clear screen
-clear
+# ============ CONFIGURATION ============
+DOMAIN="marz.tkii.eu.cc"          # <-- Replace with your domain
+ADMIN_EMAIL="kxantbhko@gmail.com" # <-- Your email for SSL
+TIMEZONE="UTC"
 
-# Show KBK Banner
-echo "============================================================"
-echo -e "\e[1;36m"
-echo "  ██╗  ██╗██████╗ ██╗  ██╗"
-echo "  ██║ ██╔╝██╔══██╗██║ ██╔╝"
-echo "  █████╔╝ ██████╔╝█████╔╝ "
-echo "  ██╔═██╗ ██╔══██╗██╔═██╗ "
-echo "  ██║  ██╗██████╔╝██║  ██╗"
-echo "  ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝"
-echo -e "\e[0m"
-echo "           KBK Marzban One Line Setup"
-echo "============================================================"
+# ============ COLORS ============
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# --- Check Root ---
-if [[ $EUID -ne 0 ]]; then
-   echo -e "\e[31m❌ Root နဲ့ Run ပါ။\e[0m"
-   echo "sudo bash install_marzban.sh"
-   exit 1
-fi
+# ============ FUNCTIONS ============
+log() {
+    echo -e "${BLUE}[+]${NC} $1"
+}
 
-# --- Show Instructions ---
-echo ""
-echo "📌 အောက်ပါအချက်တွေကို ပြင်ဆင်ထားပါ:"
-echo "  1. Domain (Server IP ကို ညွှန်ပြထားတဲ့)"
-echo "  2. Email (SSL အတွက်)"
-echo "  3. Telegram Bot Token (@BotFather ကနေ ရယူပါ)"
-echo "  4. Telegram Admin ID (@userinfobot ကနေ ရယူပါ)"
-echo "  5. Subscription Title"
-echo "  6. Admin Username & Password"
-echo "============================================================"
-echo ""
+success() {
+    echo -e "${GREEN}[✔]${NC} $1"
+}
 
-# --- Install Necessary Packages ---
-echo "📦 Checking necessary packages..."
-apt update && apt install -y curl socat wget sed jq ufw
+warn() {
+    echo -e "${YELLOW}[!]${NC} $1"
+}
 
-# --- Inputs ---
-echo ""
-read -p "🌐 Enter Domain Name (e.g., vpn.example.com): " DOMAIN
-read -p "📧 Enter Email for SSL: " EMAIL
-read -p "🤖 Enter Telegram Bot Token: " BOT_TOKEN
-read -p "👤 Enter Telegram Admin ID: " ADMIN_ID
-read -p "📝 Enter Subscription Title: " SUB_TITLE
-read -p "👨💼 Enter Admin Username: " ADMIN_USER
-read -s -p "🔑 Enter Admin Password: " ADMIN_PASS
-echo ""
-echo "============================================================"
-echo "🚀 စတင်ပါပြီ..."
-echo "============================================================"
-
-# --- Install Marzban ---
-echo ""
-echo "🚀 Installing Marzban..."
-sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
-
-# --- Wait for Marzban to initialize ---
-sleep 10
-
-# --- Stop Marzban to configure ---
-cd /opt/marzban/
-docker-compose down
-
-# --- Generate SSL Certificates using ESSL ---
-echo ""
-echo "🔐 Generating SSL Certificates..."
-sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh)" @ --install
-sudo essl "$EMAIL" "$DOMAIN" marzban
-
-# --- Check if SSL files exist ---
-if [[ ! -f "/var/lib/marzban/certs/$DOMAIN/fullchain.pem" ]]; then
-    echo "❌ SSL Certificate မရဘူး။ Certbot နဲ့ ပြန်စမ်းပါ။"
-    echo "sudo certbot certonly --standalone -d $DOMAIN"
+error() {
+    echo -e "${RED}[✘]${NC} $1"
     exit 1
-fi
+}
 
-# --- Set Up Custom Template (KBK) ---
-echo ""
-echo "🎨 Setting up KBK Custom Template..."
-sudo mkdir -p /var/lib/marzban/templates/subscription/
-sudo wget -N -P /var/lib/marzban/templates/subscription/ https://raw.githubusercontent.com/kbko414/marzban-m/main/index.html
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        error "This script must be run as root. Use: sudo bash $0"
+    fi
+}
 
-# --- Create .env file (CLEAN) ---
+# ============ MAIN INSTALLATION ============
+clear
+echo "============================================================"
+echo "       Marzban Panel Auto-Install Script"
+echo "       Domain: $DOMAIN"
+echo "============================================================"
 echo ""
-echo "📝 Creating .env configuration..."
-cat > .env <<EOF
-UVICORN_HOST = "0.0.0.0"
-UVICORN_PORT = "8000"
-UVICORN_SSL_CERTFILE = "/var/lib/marzban/certs/$DOMAIN/fullchain.pem"
-UVICORN_SSL_KEYFILE = "/var/lib/marzban/certs/$DOMAIN/privkey.pem"
-TELEGRAM_API_TOKEN = "$BOT_TOKEN"
-TELEGRAM_ADMIN_ID = "$ADMIN_ID"
-SUB_PROFILE_TITLE = "$SUB_TITLE"
-XRAY_SUBSCRIPTION_URL_PREFIX = "https://$DOMAIN:8000"
-CUSTOM_TEMPLATES_DIRECTORY = "/var/lib/marzban/templates/"
-SUBSCRIPTION_PAGE_TEMPLATE = "subscription/index.html"
+
+# 1. Root Check
+check_root
+
+# 2. Update System
+log "Updating system packages..."
+apt update -y && apt upgrade -y
+
+# 3. Install Dependencies
+log "Installing dependencies..."
+apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx sqlite3 curl wget git ufw
+
+# 4. Set Timezone
+log "Setting timezone to $TIMEZONE..."
+timedatectl set-timezone $TIMEZONE
+
+# 5. Remove old Marzban installation (if any)
+log "Removing old Marzban installation (if exists)..."
+systemctl stop marzban 2>/dev/null || true
+systemctl disable marzban 2>/dev/null || true
+rm -rf /opt/marzban /var/lib/marzban /usr/local/bin/marzban
+rm -f /etc/systemd/system/marzban.service
+rm -f /etc/nginx/sites-available/marzban /etc/nginx/sites-enabled/marzban
+systemctl daemon-reload
+
+# 6. Install Marzban
+log "Installing Marzban..."
+bash <(curl -s https://raw.githubusercontent.com/Gozargah/Marzban/master/install.sh) <<< "y"
+
+# 7. Configure .env
+log "Configuring .env..."
+cat > /opt/marzban/.env <<EOF
+UVICORN_HOST=0.0.0.0
+UVICORN_PORT=8000
+ALLOWED_HOSTS=$DOMAIN,localhost,127.0.0.1
+DEBUG=False
+# DATABASE
+DB_URL=sqlite:////var/lib/marzban/db.sqlite3
+# SSL
+SSL_CERT_FILE=/var/lib/marzban/certs/$DOMAIN/fullchain.pem
+SSL_KEY_FILE=/var/lib/marzban/certs/$DOMAIN/privkey.pem
 EOF
 
-# --- Start Marzban ---
-echo ""
-echo "🔄 Starting Marzban..."
-docker-compose up -d
+# 8. Create SSL Certificate Directory
+mkdir -p /var/lib/marzban/certs/$DOMAIN
 
-# --- Wait for Marzban to be ready ---
-sleep 10
+# 9. Start Marzban (first run to create DB)
+log "Starting Marzban for the first time..."
+systemctl daemon-reload
+systemctl start marzban
+systemctl enable marzban
+sleep 5
+systemctl status marzban --no-pager || true
 
-# --- Create Admin User ---
-echo ""
-echo "👤 Creating Admin User..."
-docker exec marzban-marzban-1 marzban cli admin create --username "$ADMIN_USER" --password "$ADMIN_PASS" --sudo || echo "Admin setup skipped."
+# 10. Configure Nginx
+log "Configuring Nginx..."
+cat > /etc/nginx/sites-available/marzban <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$server_name\$request_uri;
+}
 
-# --- Configure Firewall ---
-echo ""
-echo "🛡️ Configuring Firewall..."
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    ssl_certificate /var/lib/marzban/certs/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /var/lib/marzban/certs/$DOMAIN/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_buffering off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/marzban /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# 11. Obtain SSL Certificate (Certbot)
+log "Obtaining SSL certificate for $DOMAIN..."
+certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email $ADMIN_EMAIL --redirect --force-renewal
+
+# 12. Set Permissions
+log "Setting permissions..."
+chown -R www-data:www-data /var/lib/marzban/
+chmod 644 /var/lib/marzban/db.sqlite3 2>/dev/null || true
+chown -R www-data:www-data /var/lib/marzban/certs/
+
+# 13. Restart Services
+log "Restarting services..."
+systemctl restart marzban
+systemctl restart nginx
+
+# 14. Firewall
+log "Configuring firewall..."
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
-echo "y" | ufw enable
+echo "y" | ufw enable || true
 
-# --- Final Output ---
-clear
+# 15. Final Check
+sleep 3
+echo ""
+
+# ============ VERIFICATION ============
+success "Installation completed!"
+echo ""
 echo "============================================================"
-echo -e "\e[1;32m✅ KBK Marzban Setup အောင်မြင်စွာ ပြီးဆုံးပါပြီ!\e[0m"
+echo "📌  Marzban Panel is ready!"
+echo ""
+echo "🔗  Access: https://$DOMAIN/dashboard"
+echo ""
+echo "📁  Admin credentials (default):"
+echo "    Username: admin"
+echo "    Password: admin"
+echo ""
+echo "⚠️  Change the default password immediately!"
 echo "============================================================"
 echo ""
-echo "🌐 Dashboard: https://$DOMAIN:8000/dashboard"
-echo "👤 Username: $ADMIN_USER"
-echo "🔑 Password: [You set it]"
+
+# Check if service is running
+if systemctl is-active --quiet marzban; then
+    success "Marzban service is running."
+else
+    warn "Marzban service is not running. Check logs: journalctl -u marzban -f"
+fi
+
+if systemctl is-active --quiet nginx; then
+    success "Nginx service is running."
+else
+    warn "Nginx service is not running. Check logs: journalctl -u nginx -f"
+fi
+
+# Print service status
 echo ""
-echo "📌 Telegram Bot: @$(curl -s https://api.telegram.org/bot$BOT_TOKEN/getMe | jq -r .result.username 2>/dev/null || echo 'Check Token')"
+log "Service status:"
+systemctl status marzban --no-pager | grep Active
+systemctl status nginx --no-pager | grep Active
 echo ""
-echo "📁 Marzban Folder: /opt/marzban/"
-echo "📁 Custom Template: /var/lib/marzban/templates/subscription/index.html"
+log "Listen ports:"
+ss -tlnp | grep -E ":80|:443|:8000" || true
 echo ""
-echo "💡 Logs: cd /opt/marzban && docker-compose logs -f"
-echo "⚠️  SSL Warning ကို လျစ်လျူရှုပါ (Nginx မပါဘူး)"
-echo "============================================================"
+log "All done! Happy hacking 😎"
